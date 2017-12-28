@@ -10,8 +10,7 @@
 
 if [ `id -u` -ne 0 ]
 then
-  echo "Please start this script with root privileges!"
-  echo "Try again with sudo."
+  echo "木有权限, 请在脚本前加上 sudo"
   exit 0
 fi
 
@@ -41,7 +40,7 @@ call () {
 checkForError () {
   if [ "$?" = "1" ]
   then
-    bigEcho "An unexpected error occured!"
+    bigEcho "唉呀出错了!"
     exit 1
   fi
 }
@@ -73,7 +72,7 @@ backupCredentials () {
 }
 
 writeCredentials () {
-  bigEcho "Saving credentials"
+  bigEcho "正在保存认证信息..."
 
   cat > /etc/ipsec.secrets <<EOF
 # This file holds shared secrets or RSA private keys for authentication.
@@ -96,39 +95,14 @@ EOF
 }
 
 getCredentials () {
-  bigEcho "Querying for credentials"
-
-  if [ "$STRONGSWAN_PSK" = "" ]; then
-    echo "The VPN needs a PSK (Pre-shared key)."
-    echo "Do you wish to set it yourself? [y|n]"
-    echo "(Otherwise a random one is generated)"
-    while true; do
-      if [ $INTERACTIVE -eq 0 ]; then
-        echo "Auto-Generating PSK..."
-        yn="n"
-      else
-        read -p "" yn
-      fi
-
-      case $yn in
-        [Yy]* ) echo ""; echo "Enter your preferred key:"; read -p "" STRONGSWAN_PSK; break;;
-        [Nn]* ) generateKey; STRONGSWAN_PSK=$KEY; break;;
-        * ) echo "Please answer with Yes or No [y|n].";;
-      esac
-    done
-
-    echo ""
-    echo "The PSK is: '$STRONGSWAN_PSK'."
-    echo ""
-  fi
-
-  #################################################################
+  bigEcho "认证信息"
 
   if [ "$STRONGSWAN_USER" = "" ]; then
     if [ "$INTERACTIVE" = "0" ]; then
       STRONGSWAN_USER=""
     else
-      read -p "Please enter your preferred username [vpn]: " STRONGSWAN_USER
+        echo "VPN 用户名"
+      read -p "起个用户名 [vpn]: " STRONGSWAN_USER
     fi
 
     if [ "$STRONGSWAN_USER" = "" ]
@@ -140,73 +114,99 @@ getCredentials () {
   #################################################################
 
   if [ "$STRONGSWAN_PASSWORD" = "" ]; then
-    echo "The VPN user '$STRONGSWAN_USER' needs a password."
-    echo "Do you wish to set it yourself? [y|n]"
-    echo "(Otherwise a random one is generated)"
+    echo "VPN 密码"
+    echo "你要自己设置一个还是要自动生成一个? [y|n]"
     while true; do
       if [ "$INTERACTIVE" = "0" ]; then
-        echo "Auto-Generating Password..."
+        echo "自动生成 VPN 密码..."
         yn="n"
       else
         read -p "" yn
       fi
 
       case $yn in
-        [Yy]* ) echo ""; echo "Enter your preferred key:"; read -p "" STRONGSWAN_PASSWORD; break;;
+        [Yy]* ) echo ""; echo "设置 VPN 密码:"; read -p "" STRONGSWAN_PASSWORD; break;;
         [Nn]* ) generateKey; STRONGSWAN_PASSWORD=$KEY; break;;
-        * ) echo "Please answer with Yes or No [y|n].";;
+        * ) echo "打 Yes 或 No [y|n].";;
       esac
     done
+  fi
+
+  #################################################################
+
+  if [ "$STRONGSWAN_PSK" = "" ]; then
+    echo "VPN PSK (预共享密钥)."
+    echo "你要自己设置一个还是要自动生成一个? [y|n]"
+    while true; do
+      if [ $INTERACTIVE -eq 0 ]; then
+        echo "自动生成 PSK (预共享密钥)..."
+        yn="n"
+      else
+        read -p "" yn
+      fi
+
+      case $yn in
+        [Yy]* ) echo ""; echo "设置 PSK (预共享密钥):"; read -p "" STRONGSWAN_PSK; break;;
+        [Nn]* ) generateKey; STRONGSWAN_PSK=$KEY; break;;
+        * ) echo "打 Yes 或 No [y|n].";;
+      esac
+    done
+
+    echo ""
+    echo "好, PSK (预共享密钥)是: '$STRONGSWAN_PSK'."
+    echo ""
   fi
 }
 
 #################################################################
 
+# phil 你在逗我, 你,,并没有在这写安装的过程呀
+
 if [ "$INTERACTIVE" = "0" ]; then
-  bigEcho "Automating installation in non-interactive mode..."
+  bigEcho "静默安装..."
 else
-  echo "This script will install strongSwan on this machine."
-  echo -n "Do you wish to continue? [y|n] "
+  echo "要安装 strongSwan 啦."
+  echo -n "继续嘛? [y|n] "
 
   while true; do
     read -p "" yn
     case $yn in
         [Yy]* ) break;;
         [Nn]* ) exit 0;;
-        * ) echo "Please answer with Yes or No [y|n].";;
+        * ) echo "打 Yes 或 No [y|n].";;
     esac
   done
 fi
 
 #################################################################
 
-# Checks if curl is installed
+# 看安装 curl 了没
 
 call which curl
 if [ "$?" = "1" ]; then
-  bigEcho "This script requires curl to be installed, to work correctly."
+  bigEcho "什么系统, 连 curl 都木有. 去安装一下 curl, 比如: sudo apt install curl"
   exit 1
 fi
 
 #################################################################
 
-# Checks if an ipsec binary is already installed
+# 看安装 ipsec 工具了没
 
 call which ipsec
 if [ "$?" = "0" ]; then
-  echo "An ipsec binary is already installed and present on this machine!"
-  
+  echo "ipsec 安装着呢!"
+
   if [ "$INTERACTIVE" = "0" ]; then
-    bigEcho "Ignored this warning in non-interactive mode..."
+    bigEcho "ipsec 没装, 静默安装呀, 那不管了"
   else
-    echo -n "Do you wish to continue? [y|n] "
+    echo -n "继续嘛? [y|n] "
 
     while true; do
       read -p "" yn
       case $yn in
           [Yy]* ) break;;
           [Nn]* ) exit 0;;
-          * ) echo "Please answer with Yes or No [y|n].";;
+          * ) echo "打 Yes 或 No [y|n].";;
       esac
     done
   fi
@@ -214,13 +214,13 @@ fi
 
 #################################################################
 
-# Clean up and create compilation environment
+# 清理一下, 准备编译环境
 call rm -rf $STRONGSWAN_TMP
 call mkdir -p $STRONGSWAN_TMP
 
 curl -sSL "https://github.com/icy/pacapt/raw/ng/pacapt" > $STRONGSWAN_TMP/pacapt
 if [ "$?" = "1" ]; then
-  bigEcho "An unexpected error occured while downloading pacapt!"
+  bigEcho "唉呀, 下载 pacapt 出错!"
   exit 1
 fi
 
@@ -230,7 +230,7 @@ echo ""
 
 #################################################################
 
-bigEcho "Installing necessary dependencies"
+bigEcho "先安装几个依赖..."
 
 call pacapt -Sy --noconfirm
 checkForError
@@ -240,7 +240,7 @@ checkForError
 
 #################################################################
 
-bigEcho "Installing StrongSwan..."
+bigEcho "安装 StrongSwan..."
 
 call mkdir -p $STRONGSWAN_TMP/src
 curl -sSL "https://download.strongswan.org/strongswan-$STRONGSWAN_VERSION.tar.gz" | tar -zxC $STRONGSWAN_TMP/src --strip-components 1
@@ -271,7 +271,7 @@ checkForError
 
 #################################################################
 
-bigEcho "Preparing various configuration files..."
+bigEcho "准备配置文件..."
 
 cat > /etc/ipsec.conf <<EOF
 # ipsec.conf - strongSwan IPsec configuration file
@@ -406,11 +406,11 @@ EOF
 #################################################################
 
 if [[ -f /etc/ipsec.secrets ]] || [[ -f /etc/ppp/chap-secrets ]]; then
-  echo "Do you wish to replace your old credentials? (Including a backup) [y|n]"
+  echo "替换旧的认证信息文件? (会先自动备份一下) [y|n]"
 
   while true; do
     if [ "$INTERACTIVE" = "0" ]; then
-      echo "Old credentials were found but to play safe, they will not be automatically replaced. Delete them manually if you want them replaced."
+      echo "唉呀, 有旧的认证信息文件, 静默安装前需要你先手动移除他们."
       break
     fi
 
@@ -418,7 +418,7 @@ if [[ -f /etc/ipsec.secrets ]] || [[ -f /etc/ppp/chap-secrets ]]; then
     case $yn in
         [Yy]* ) backupCredentials; getCredentials; writeCredentials; break;;
         [Nn]* ) break;;
-        * ) echo "Please answer with Yes or No [y|n].";;
+        * ) echo "打 Yes 或 No [y|n].";;
     esac
   done
 else
@@ -428,7 +428,7 @@ fi
 
 #################################################################
 
-bigEcho "Applying changes..."
+bigEcho "应用改动..."
 
 iptables --table nat --append POSTROUTING --jump MASQUERADE
 echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -440,7 +440,7 @@ done
 
 #################################################################
 
-bigEcho "Create /etc/init.d/vpn-assist helper..."
+bigEcho "创建 /etc/init.d/vpn-assist 脚本..."
 
 cat > /etc/init.d/vpn-assist <<'EOF'
 #!/bin/sh
@@ -495,7 +495,7 @@ chmod +x /etc/init.d/vpn-assist
 
 #################################################################
 
-bigEcho "Starting up VPN..."
+bigEcho "启动 VPN..."
 
 /etc/init.d/vpn-assist start
 
@@ -507,14 +507,14 @@ echo "Username: $STRONGSWAN_USER"
 echo "Password: $STRONGSWAN_PASSWORD"
 echo "============================================================"
 
-echo "Note:"
-echo "* Before connecting with a Windows client, please see: http://support.microsoft.com/kb/926179"
-echo "* UDP Ports 1701, 500 and 4500 must be opened"
-echo "* A specific host or public IP is not necessary as Strongswan utilises NAT traversal"
+echo "注意注意:"
+echo "* 连接 Windows 机子前, 看看这: http://support.microsoft.com/kb/926179"
+echo "* UDP 端口 1701, 500, 4500 要开着"
+echo "* Strongswan 打洞洞不需要特定的域名或 IP"
 
 #################################################################
 
-bigEcho "Cleaning up..."
+bigEcho "清理清理..."
 
 call rm -rf $STRONGSWAN_TMP
 

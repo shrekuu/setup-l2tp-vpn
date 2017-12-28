@@ -1,44 +1,62 @@
-# Setup a Strongswan IPSec (& L2TP) Server
+# 在 Ubuntu/Debian 上配置高鲁棒性(真的, 骗你是小狗) StrongSwan IPSec(& L2TP) VPN 服务
 
-> NOTE: This is probably securer than using https://github.com/philplckthun/setup-simple-ipsec-l2tp-vpn
-> Furthermore it supports both L2TP and regular IPSec connections
+> 如果你不爱 LibreSwan 了那就试试 StrongSwan.
 
-## Installation
+## 安装
 
-This script doesn't need a domain or specific public IP to work.
+1. 先安装 strongswan 与 xl2tpd:
+
+    ```
+    sudo apt install strongswan xl2tpd
+    ```
+
+2. 然后执行(运行此脚本不需要额外的域名或公网 IP):
+
+    ```
+    curl -L -O https://rawgit.com/shrekuu/setup-l2tp-vpn/master/setup.sh
+    chmod +x setup.sh
+    sudo ./setup.sh
+    ```
+
+脚本运行过程中你需要设置:
+
+- 用户名
+- 密码
+- PSK (预共享密钥)
+
+> 若要升级 Strongswan, 再跑一遍此脚本即可, 记得要先备份你的 IPSec 配置.
+
+## 用法
+
+此脚本安装了 `vpn-assist` 启动脚本到 `/etc/init.d` 目录. 比如:
+
+```sh
+sudo service vpn-assist start
+sudo service vpn-assist stop
+sudo service vpn-assist restart
 
 ```
-curl -L -O https://raw.github.com/philplckthun/setup-strong-strongswan/master/setup.sh
-chmod +x setup.sh
-sudo ./setup.sh
+
+
+也支持 Systemd 启动. 比如:
+
+```sh
+sudo systemctl start vpn-assist
+sudo systemctl stop vpn-assist
+sudo systemctl restart vpn-assist
 ```
 
-The script will lead you through the installation process. If you haven't run
-this script before it will ask you to enter credentials for the VPN, namely:
 
-- a username
-- a password
-- a PSK (pre-shared key)
+> 在 `etc/ppp/chap-secrets`(l2tp) 这里修改账号.
+> [@zackdevine 也可以参考这个宝宝的账号管理脚本](https://github.com/zackdevine/setup-strongswan-vpn-account)
 
-For upgrading Strongswan you can just run the script again. Remember to back up
-your custom IPSec configuration files beforehand.
+## 卸载
 
-## Usage
+卸载 `strongswan` 和 `xl2tpd`:
 
-This installs the `vpn-assist` init.d script. Systemd is backwards compatible to these
-scripts and thus you can use it to `start|stop|restart` the VPN server, which
-should also start itself automatically on startup.
-
-You can manage accounts for your VPN via `/etc/ipsec.secrets` and `etc/ppp/chap-secrets`.
-[@zackdevine's account managing script automates this process](https://github.com/zackdevine/setup-strongswan-vpn-account)
-
-## Uninstallation
-
-Download the Strongswan source and run:
-
-```
-make uninstall
+```sh
+sudo apt purge strongswan
+sudo apt purge xl2tpd
 ```
 
-Then uninstall `xl2tpd` and remove `/etc/init.d/vpn-assist`. That should
-suffice for a rather clean uninstallation.
+删除 `/etc/init.d/vpn-assist`.
